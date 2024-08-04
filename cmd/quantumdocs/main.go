@@ -7,21 +7,14 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Rishi-Mishra0704/QuantumDocs/models"
 	"github.com/Rishi-Mishra0704/QuantumDocs/server"
 	"github.com/fsnotify/fsnotify"
+	"github.com/gorilla/websocket"
 )
 
-// Config struct to hold the configuration values
-type Config struct {
-	APIFilePath string     `json:"apiFilePath"`
-	APIDoc      APIDocMeta `json:"apiDoc"`
-}
-
-// APIDocMeta struct to hold API documentation metadata
-type APIDocMeta struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Version     string `json:"version"`
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
 func main() {
@@ -39,6 +32,46 @@ func main() {
 	defer watcher.Close()
 
 	done := make(chan bool)
+	clients := make(map[*websocket.Conn]bool)
+	broadcast := make(chan string)
+
+	// WebSocket server to handle client connections and broadcasting messages
+	go func() {
+		http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+			conn, err := upgrader.Upgrade(w, r, nil)
+			if err != nil {
+				log.Println("Error while connecting:", err)
+				return
+			}
+			clients[conn] = true
+			defer conn.Close()
+			for {
+				_, _, err := conn.ReadMessage()
+				if err != nil {
+					// Handle WebSocket close codes gracefully
+					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+						return
+					} else {
+						log.Println("Error while reading message:", err)
+					}
+					delete(clients, conn)
+					break
+				}
+			}
+		})
+
+		for {
+			msg := <-broadcast
+			for client := range clients {
+				err := client.WriteMessage(websocket.TextMessage, []byte(msg))
+				if err != nil {
+					log.Println("Error while sending message:", err)
+					client.Close()
+					delete(clients, client)
+				}
+			}
+		}
+	}()
 
 	// Watch API source file and config file
 	go func() {
@@ -64,6 +97,7 @@ func main() {
 						log.Printf("Error regenerating API documentation: %v", err)
 					} else {
 						fmt.Println("API documentation updated successfully!")
+						broadcast <- "reload"
 					}
 				}
 			case err, ok := <-watcher.Errors:
@@ -91,13 +125,14 @@ func main() {
 		log.Fatalf("Error generating API documentation: %v", err)
 	}
 
-	// Serve the documentation
+	// Serve the documentation and WebSocket server
 	http.HandleFunc("/quantumdocs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(server.GetHTML()))
 	})
 
 	fmt.Println("Serving documentation at http://localhost:8080/quantumdocs")
+	fmt.Println("WebSocket server at ws://localhost:8080/ws")
 	go func() {
 		log.Fatal(http.ListenAndServe(":8080", nil))
 	}()
@@ -106,7 +141,7 @@ func main() {
 }
 
 // generateAPIDocumentation processes the API file and updates the in-memory HTML content
-func generateAPIDocumentation(config *Config) error {
+func generateAPIDocumentation(config *models.Config) error {
 	apiDoc, err := server.ParseAPIDoc(config.APIFilePath)
 	if err != nil {
 		return fmt.Errorf("error parsing API documentation: %w", err)
@@ -126,13 +161,13 @@ func generateAPIDocumentation(config *Config) error {
 }
 
 // loadConfig reads and parses the JSON configuration file
-func loadConfig(filename string) (*Config, error) {
+func loadConfig(filename string) (*models.Config, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	var config Config
+	var config models.Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		return nil, err

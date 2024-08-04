@@ -20,8 +20,8 @@ var books = []Book{
 
 // @Method GET
 // @Path /books/{id}
-// @Description Get all books
-// @Response 200 - Returns an array of Book objects
+// @Description Get all books.
+// @Response 200 - Returns an array of Book objects.
 func getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(books)
