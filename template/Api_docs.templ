@@ -1,0 +1,48 @@
+package templates
+
+import 	"github.com/Rishi-Mishra0704/QuantumDocs/models"
+
+templ ApiDocTemplate(doc *models.APIDoc) {
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>{doc.Title} API Documentation</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+            }
+            h1 {
+                color: #333;
+            }
+            .endpoint {
+                background-color: #f4f4f4;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                margin-bottom: 20px;
+                padding: 15px;
+            }
+            .method {
+                font-weight: bold;
+                color: #0066cc;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>{doc.Title} API Documentation</h1>
+        <p>{doc.Description}</p>
+        <p>Version: {doc.Version}</p>
+
+        for _, endpoint := range doc.Endpoints {
+            <div class="endpoint">
+                <h2><span class="method">{endpoint.Method}</span> {endpoint.Path}</h2>
+                <p>{endpoint.Description}</p>
+            </div>
+        }
+    </body>
+    </html>
+}
