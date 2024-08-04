@@ -65,26 +65,29 @@ func init() {
             font-family: monospace;
         }
     </style>
-	<script>
-        var socket = new WebSocket("ws://localhost:8080/ws");
+<script>
+    console.log("WebSocket script loaded");
+    var socket = new WebSocket("ws://localhost:8080/ws");
 
-        socket.onmessage = function (event) {
-            if (event.data === "reload") {
-                location.reload();
-            }
-        };
+    socket.onmessage = function (event) {
+        console.log("Message received from server:", event.data);
+        if (event.data === "reload") {
+            location.reload();
+        }
+    };
 
-        socket.onclose = function (event) {
-            console.log("WebSocket closed. Reconnecting...");
-            setTimeout(function() {
-                socket = new WebSocket("ws://localhost:8080/ws");
-            }, 5000); // Reconnect after 5 seconds
-        };
+    socket.onclose = function (event) {
+        console.log("WebSocket closed. Reconnecting...");
+        setTimeout(function() {
+            socket = new WebSocket("ws://localhost:8080/ws");
+        }, 5000);
+    };
 
-        socket.onerror = function (error) {
-            console.error("WebSocket error:", error);
-        };
-    </script>
+    socket.onerror = function (error) {
+        console.error("WebSocket error:", error);
+    };
+</script>
+
 </head>
 <body>
     <h1>{{.Title}} API Documentation</h1>

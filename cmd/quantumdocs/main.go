@@ -50,9 +50,11 @@ func main() {
 				if err != nil {
 					// Handle WebSocket close codes gracefully
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+						log.Println("WebSocket client disconnected")
 						return
 					}
 					delete(clients, conn)
+					log.Println("WebSocket client disconnected due to error:", err)
 					break
 				}
 			}
@@ -60,13 +62,14 @@ func main() {
 
 		for {
 			msg := <-broadcast
-			log.Printf("Broadcasting message: %s", msg)
 			for client := range clients {
 				err := client.WriteMessage(websocket.TextMessage, []byte(msg))
 				if err != nil {
 					client.Close()
 					delete(clients, client)
 					log.Printf("Error sending message to client: %v", err)
+				} else {
+					return
 				}
 			}
 		}
@@ -85,17 +88,15 @@ func main() {
 					if event.Name == "quantumdocs.json" {
 						newConfig, err := loadConfig("quantumdocs.json")
 						if err != nil {
-							log.Printf("Error reloading config: %v", err)
+							return
 						} else {
 							config = newConfig
-							fmt.Println("Config reloaded")
 						}
 					} else if event.Name == config.APIFilePath {
 						err := generateAPIDocumentation(config)
 						if err != nil {
-							log.Printf("Error regenerating API documentation: %v", err)
+							return
 						} else {
-							fmt.Println("API documentation updated successfully!")
 							broadcast <- "reload"
 						}
 					} else {
@@ -133,10 +134,9 @@ func main() {
 		w.Write([]byte(server.GetHTML()))
 	})
 
-	fmt.Println("Serving documentation at http://localhost:8080/quantumdocs")
-	fmt.Println("WebSocket server at ws://localhost:8080/ws")
+	fmt.Printf("Serving documentation at %s/quantumdocs", config.BaseUrl)
 	go func() {
-		log.Fatal(http.ListenAndServe(":8080", nil))
+		log.Fatal(http.ListenAndServe(config.Port, nil))
 	}()
 
 	<-done
