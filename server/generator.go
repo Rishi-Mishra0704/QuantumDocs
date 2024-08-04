@@ -1,18 +1,17 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/Rishi-Mishra0704/QuantumDocs/models"
-	templates "github.com/Rishi-Mishra0704/QuantumDocs/template"
+	"github.com/Rishi-Mishra0704/QuantumDocs/template"
 )
 
 // GenerateAPIDocs generates API documentation and writes it to the specified output file
 func GenerateAPIDocs(apiDoc *models.APIDoc, outputDir, outputFile string) error {
-	component := templates.ApiDocTemplate(apiDoc)
+	htmlContent := template.GenerateHTML(apiDoc)
 
 	// Ensure the output directory exists
 	err := os.MkdirAll(outputDir, os.ModePerm)
@@ -29,6 +28,22 @@ func GenerateAPIDocs(apiDoc *models.APIDoc, outputDir, outputFile string) error 
 	}
 	defer f.Close()
 
-	// Render the documentation into the file
-	return component.Render(context.Background(), f)
+	// Write the HTML content to the file
+	_, err = f.WriteString(htmlContent)
+	if err != nil {
+		return fmt.Errorf("error writing to output file: %v", err)
+	}
+
+	// Update the in-memory HTML content
+	template.HtmlMu.Lock()
+	template.HtmlContent = htmlContent
+	template.HtmlMu.Unlock()
+
+	return nil
+}
+
+func GetHTML() string {
+	template.HtmlMu.RLock()
+	defer template.HtmlMu.RUnlock()
+	return template.HtmlContent
 }

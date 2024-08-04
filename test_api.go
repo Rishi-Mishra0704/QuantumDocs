@@ -20,7 +20,6 @@ var books = []Book{
 
 // @Method GET
 // @Path /books/{id}
-// @Description Get a book by ID
 // @Description Get all books
 // @Response 200 - Returns an array of Book objects
 func getBooks(w http.ResponseWriter, r *http.Request) {
