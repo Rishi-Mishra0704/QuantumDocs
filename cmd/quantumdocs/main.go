@@ -51,8 +51,6 @@ func main() {
 					// Handle WebSocket close codes gracefully
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
 						return
-					} else {
-						log.Println("Error while reading message:", err)
 					}
 					delete(clients, conn)
 					break
@@ -62,12 +60,13 @@ func main() {
 
 		for {
 			msg := <-broadcast
+			log.Printf("Broadcasting message: %s", msg)
 			for client := range clients {
 				err := client.WriteMessage(websocket.TextMessage, []byte(msg))
 				if err != nil {
-					log.Println("Error while sending message:", err)
 					client.Close()
 					delete(clients, client)
+					log.Printf("Error sending message to client: %v", err)
 				}
 			}
 		}
@@ -82,22 +81,25 @@ func main() {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					fmt.Println("File modified:", event.Name)
-					// Reload config if the config file was modified
+					fmt.Printf("File modified: %s\n", event.Name)
 					if event.Name == "quantumdocs.json" {
 						newConfig, err := loadConfig("quantumdocs.json")
 						if err != nil {
 							log.Printf("Error reloading config: %v", err)
 						} else {
 							config = newConfig
+							fmt.Println("Config reloaded")
 						}
-					}
-					err := generateAPIDocumentation(config)
-					if err != nil {
-						log.Printf("Error regenerating API documentation: %v", err)
+					} else if event.Name == config.APIFilePath {
+						err := generateAPIDocumentation(config)
+						if err != nil {
+							log.Printf("Error regenerating API documentation: %v", err)
+						} else {
+							fmt.Println("API documentation updated successfully!")
+							broadcast <- "reload"
+						}
 					} else {
-						fmt.Println("API documentation updated successfully!")
-						broadcast <- "reload"
+						fmt.Printf("Ignored file modification: %s\n", event.Name)
 					}
 				}
 			case err, ok := <-watcher.Errors:
@@ -111,12 +113,12 @@ func main() {
 
 	err = watcher.Add(config.APIFilePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error adding API file to watcher: %v", err)
 	}
 
 	err = watcher.Add("quantumdocs.json")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error adding config file to watcher: %v", err)
 	}
 
 	// Initial documentation generation

@@ -20,7 +20,7 @@ var books = []Book{
 
 // @Method GET
 // @Path /books/{id}
-// @Description Get all books.
+// @Description Get all books
 // @Response 200 - Returns an array of Book objects.
 func getBooks(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -33,7 +33,6 @@ func getBooks(w http.ResponseWriter, r *http.Request) {
 // @Parameter id - string - The ID of the book to retrieve
 // @Response 200 - Returns a single Book object
 // @Response 404 - Book not found
-
 func getBook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	id := r.URL.Path[len("/books/"):]
