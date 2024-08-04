@@ -1,11 +1,12 @@
 package models
 
 type Endpoint struct {
-	Method      string
-	Path        string
-	Description string
-	Parameters  []Parameter
-	Response    string
+	Method         string
+	Path           string
+	Description    string
+	Parameters     []Parameter
+	RequestSchema  string
+	ResponseSchema string
 }
 
 type Parameter struct {

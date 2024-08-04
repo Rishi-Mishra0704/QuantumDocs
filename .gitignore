@@ -1,0 +1,5 @@
+# Ignore all files in any 'bin' directory at any level
+*/bin/*
+
+# Ignore all HTML files
+*.html
