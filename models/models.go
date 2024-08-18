@@ -25,15 +25,8 @@ type APIDoc struct {
 
 // Config struct to hold the configuration values
 type Config struct {
-	APIFilePath string     `json:"apiFilePath"`
-	BaseUrl     string     `json:"base_url"`
-	Port        string     `json:"port"`
-	APIDoc      APIDocMeta `json:"apiDoc"`
-}
-
-// APIDocMeta struct to hold API documentation metadata
-type APIDocMeta struct {
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Version     string `json:"version"`
+	APIFilePath string `json:"apiFilePath"`
+	BaseUrl     string `json:"base_url"`
+	Port        string `json:"port"`
+	APIDoc      APIDoc `json:"apiDoc"`
 }

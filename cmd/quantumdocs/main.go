@@ -1,14 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/Rishi-Mishra0704/QuantumDocs/models"
 	"github.com/Rishi-Mishra0704/QuantumDocs/server"
+	"github.com/Rishi-Mishra0704/QuantumDocs/utils"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gorilla/websocket"
 )
@@ -19,7 +18,7 @@ var upgrader = websocket.Upgrader{
 
 func main() {
 	// Load configuration from JSON file
-	config, err := loadConfig("quantumdocs.json")
+	config, err := utils.LoadConfig()
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
@@ -28,7 +27,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating watcher: %v", err)
 	}
-
 	defer watcher.Close()
 
 	done := make(chan bool)
@@ -48,7 +46,6 @@ func main() {
 			for {
 				_, _, err := conn.ReadMessage()
 				if err != nil {
-					// Handle WebSocket close codes gracefully
 					if websocket.IsCloseError(err, websocket.CloseGoingAway) {
 						log.Println("WebSocket client disconnected")
 						return
@@ -68,8 +65,6 @@ func main() {
 					client.Close()
 					delete(clients, client)
 					log.Printf("Error sending message to client: %v", err)
-				} else {
-					return
 				}
 			}
 		}
@@ -86,19 +81,19 @@ func main() {
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					fmt.Printf("File modified: %s\n", event.Name)
 					if event.Name == "quantumdocs.json" {
-						newConfig, err := loadConfig("quantumdocs.json")
+						newConfig, err := utils.LoadConfig()
 						if err != nil {
+							log.Printf("Error reloading config: %v", err)
 							return
-						} else {
-							config = newConfig
 						}
+						config = newConfig
 					} else if event.Name == config.APIFilePath {
 						err := generateAPIDocumentation(config)
 						if err != nil {
+							log.Printf("Error generating API documentation: %v", err)
 							return
-						} else {
-							broadcast <- "reload"
 						}
+						broadcast <- "reload"
 					} else {
 						fmt.Printf("Ignored file modification: %s\n", event.Name)
 					}
@@ -129,14 +124,9 @@ func main() {
 	}
 
 	// Serve the documentation and WebSocket server
-	http.HandleFunc("/quantumdocs", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(server.GetHTML()))
-	})
-
-	fmt.Printf("Serving documentation at %s/quantumdocs", config.BaseUrl)
+	fmt.Printf("Serving documentation at %s/quantumdocs\n", config.BaseUrl)
 	go func() {
-		log.Fatal(http.ListenAndServe(config.Port, nil))
+		log.Fatal(server.StartServer(":8080"))
 	}()
 
 	<-done
@@ -154,26 +144,8 @@ func generateAPIDocumentation(config *models.Config) error {
 	apiDoc.Description = config.APIDoc.Description
 	apiDoc.Version = config.APIDoc.Version
 
-	err = server.GenerateAPIDocs(apiDoc, "quantumdocs", "index.html")
-	if err != nil {
-		return fmt.Errorf("error generating API documentation: %w", err)
-	}
+	// Update the global apiDoc in the server package
+	server.InitializeAPIDoc(apiDoc)
 
 	return nil
-}
-
-// loadConfig reads and parses the JSON configuration file
-func loadConfig(filename string) (*models.Config, error) {
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	var config models.Config
-	err = json.Unmarshal(data, &config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config, nil
 }
