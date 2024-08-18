@@ -4,4 +4,4 @@
 # Ignore all HTML files
 *.html
 *./quantumdocs/*
-quantumdocs.*
+
